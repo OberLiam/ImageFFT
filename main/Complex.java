@@ -1,19 +1,20 @@
 package main;
 
+/**
+ * @author Liam
+ * Copmlex Numbers
+ */
 public class Complex {
-	public static Complex ZERO = new Complex(0,0);
-	public static Complex ONE = new Complex(1,0);
+	public static final Complex ZERO = new Complex(0,0);
+	public static final Complex ONE = new Complex(1,0);
 	
-	/**
-	 * real and imaginary parts of the function
-	 */
+	// the real and imaginary parts to a function
 	public double r,i;
 	
 	public Complex(double r, double i) {
 		this.r = r;
 		this.i = i;
 	}
-	//public Complex(int r, int i)
 	
 	/**
 	 * Returns a complex number with the given magnitude and phase

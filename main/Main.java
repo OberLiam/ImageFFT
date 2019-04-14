@@ -22,24 +22,16 @@ public class Main {
 	//NOTE: w, h used throughout. Not to be changed
 	public static int W = 1024; //width
 	public static int H = 512; //height
-	public static int M = 2048; //common multiple used for FFT
-	public static String INFILE = "imgs/chicago.png"; // the file to read from (yes ".png")
+	public static int M = 2048; //common multiple of H and W used for FFT
+	public static String INFILE = "imgs/chicago.png"; // the file to read from (include ".png")
 	public static String OUTFILE = "imgs/test/chicago"; // the file to write to (no ".png")
 	
-	public static Random random = new Random();
+	public static Random random = new Random(); //utility random instance used everywhere
 	
 	public static void main(String[] args) {
 		System.out.println("Starting.");
 		
-		// Setting up expsW, expsH, the roots of unity
-		expsW = new Complex[W];
-		for(int i=0;i<W;i++) {
-			expsW[i] = Complex.makeRT(1, (2*Math.PI)*i/(double)(W) );
-		}
-		expsH = new Complex[H];
-		for(int j=0;j<H;j++) {
-			expsH[j] = Complex.makeRT(1, (2*Math.PI)*j/(double)(H) );
-		}
+		// Setting up expsM as the roots of unity
 		expsM = new Complex[M];
 		for(int i=0;i<M;i++) {
 			expsM[i] = Complex.makeRT(1, (2*Math.PI)*i/(double)(M) );
@@ -58,7 +50,7 @@ public class Main {
 			
 			System.out.println("Performing Fourier Transform...");
 			long temp1 = System.currentTimeMillis();
-			Complex[][][] wvArr = FFTAll(pxArr, true);
+			Complex[][][] wvArr = FTAll(pxArr, true);
 			System.out.println("Finished Fourier Transform.");
 			System.out.println("(took "+(System.currentTimeMillis()-temp1)/1000.0+" seconds)");
 
@@ -131,7 +123,7 @@ public class Main {
 					wvArrColor[1][i][j] = wvArr[0][i][j].scale(0.4);
 					wvArrColor[2][i][j] = wvArr[0][i][j].scale(0.6*Math.pow(zz, 0.8));
 				}
-			Complex[][][] pxArrColor = FFTAll(wvArrColor, false);
+			Complex[][][] pxArrColor = FTAll(wvArrColor, false);
 			//makeBright(pxArrColor, targetBrightness);
 			ImageIO.write( makeBImg(pxArrColor), "png", new File(OUTFILE+"_Colors"+System.currentTimeMillis()+".png"));
 			
@@ -147,6 +139,12 @@ public class Main {
 		System.out.println("Ending.");
 	}
 	
+	/**
+	 * Filters a specific wave-decomposition of an image using a specified filter
+	 * @param wvArr wave-decomposition of an image
+	 * @param filter the filter to be applied
+	 * @returna new wave-decomposition that is the filter applied to wvArr
+	 */
 	public static Complex[][][] applyFilter(Complex[][][] wvArr, Filterer filter) {
 		Complex[][][] wvArrOut = new Complex[3][W][H];
 		for(int i=0;i<W;i++)
@@ -160,7 +158,12 @@ public class Main {
 		return wvArrOut;
 	}
 	
-	// turns a complex-pixel array into a buffered image ripe for printing
+	/**
+	 * Make a buffered image from a pixel-decomposition. Only takes the real part of each r,g,b value.
+	 * Requires that H and W be the true widths and heights of the image
+	 * @param pxArr image in (complex) pixel array form
+	 * @return the image as a buffered image
+	 */
 	public static BufferedImage makeBImg(Complex[][][] pxArr) {
 		BufferedImage out = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
 		for(int i=0;i<W;i++)
@@ -183,6 +186,13 @@ public class Main {
 	}
 
 	// turns a bufferedImage into a complex pixel array
+	/**
+	 * Create the (complex) pixel array representing a given buffered image
+	 * Requires that H and W be the true widths and heights of the image
+	 * Values range from 0 to 255 (real)
+	 * @param bimg the buffered image to represent as a pixel array
+	 * @return the pixel-array representation
+	 */
 	public static Complex[][][] getComplexPxlArr(BufferedImage bimg) {
 		Complex[][][] output = new Complex[3][W][H];
 		for(int i=0;i<W;i++)
@@ -198,9 +208,13 @@ public class Main {
 		return output;
 	}
 	
-	// Finds the total brightness of a picture
-	//TODO: look up the standard way to brighten up a picture. Hopefully, only this will have to be changed.
-	// Scales linearly with pxArr... which works for some reason.
+	//TODO: look up the standard way to brighten up a picture. Hopefully, only this function will have to be changed.
+	/**
+	 * Finds the total brightness of a picture.
+	 * Always non-negative and scales linearly with the values of pxArr.
+	 * @param pxArr the (complex) pixel array to find the brightness of
+	 * @return the brightness of the pixel array
+	 */
 	public static double getBrightness(Complex[][][] pxArr) {
 		double out = 0;
 		for(int i=0;i<W;i++)
@@ -210,8 +224,12 @@ public class Main {
 				}
 		return out;
 	}
-	// Brightens up a picture to a target brightness
-	// WARNING: will replace the pixel-array
+	/**
+	 * Scales the (r,g,b values of) pixels in a pixel array so that its brightness will be the target brightness
+	 * Modifies the pixel array in-place.
+	 * @param pxArr the (complex) pixel array to modify the brightness of
+	 * @param targetBrightness the target brightness for the pixel array
+	 */
 	public static void makeBright(Complex[][][] pxArr, double targetBrightness) {
 		double firstBrightness = getBrightness(pxArr);
 		double ratio = targetBrightness / firstBrightness;
@@ -223,8 +241,12 @@ public class Main {
 	}
 	
 	
-	// very useful
-	// assume n, m >= 0
+	/**
+	 * Finds the gcd of two nonnegative integers using the Euclidean method
+	 * @param n
+	 * @param m
+	 * @return the gcd of n and m
+	 */
 	public static int gcd(int n, int m) {
 		if(n == 0)
 			return m;
@@ -237,22 +259,27 @@ public class Main {
 	}
 	
 	
-	//complex exponentials for the W and H
-	private static Complex[] expsW;
-	private static Complex[] expsH;
-	public static Complex getExpsWH(int i, int j) {
-		return Complex.multiply( expsW[((i%W)+W)%W], expsH[((j%H)+H)%H] );
-	}
-	//complex exponentials for a large M (here taken as max{W,H}) that is used by FFT
+	//complex exponentials for all powers of a primitive Mth root ot unity
 	private static Complex[] expsM;
+	/**
+	 * Utility function for computing a unit-norm complex number that is, roughly, a (num/dem)th root of unity
+	 * @param num
+	 * @param den
+	 * @return exp(2*pi*i* (num/den) )
+	 */
 	public static Complex getExpsM(int num, int den) {
 		int i = expsM.length * num / den; // this is the position within expsM
 		return expsM[((i%expsM.length)+expsM.length)%expsM.length];
 	}
 	
-	// performs the Slow Fourier Transform.
-	// does not have any restrictions on the size of the input image
-	// "forward" denotes whether to do the forward or reverse transforms.
+	/**
+	 * Performs a Discrete Fourier Transform (DFT) on a given input. This is not optimized in any way, and henceforth the Slow Fourier Transfrom (SFT)
+	 * There are no restrictions on W or H while doing this.
+	 * Requires an input of size W by H
+	 * @param in A (complex) array on which to perform the DFT.
+	 * @param forward Wwhether to do a forward DFT or backwards DFT
+	 * @return A new array that is in's DFT.
+	 */
 	public static Complex[][] SFT(Complex[][] in, boolean forward) {
 		Complex[][] out = new Complex[W][H];
 		for(int i=0;i<W;i++)
@@ -265,33 +292,23 @@ public class Main {
 						//out[i][j] += in[g][k]*exp(-ig/w)*exp(-jk/h)
 						out[i][j] = Complex.add(out[i][j], 
 								Complex.multiply(in[g][k],
-										getExpsWH(g*i*(forward?-1:1), k*j*(forward?-1:1)
-											))
+										getExpsM((g*i*H + k*j*W) * (forward?-1:1), H*W)
+										)
 								);
 					}
 			}
 		return out;
 	}
-	//same as above, but does this for all colors in a complex-pixelized-img at once
-	// "forward" denotes whether to do the forward or reverse transforms.
-	public static Complex[][][] SFTAll(Complex[][][] in, boolean forward) {
-		Complex[][][] out = new Complex[3][][];
-		for(int clr=0;clr<3;clr++) {
-			out[clr] = SFT(in[clr], forward);
-		}
-		if(forward) {
-			for(int i=0;i<W;i++)
-				for(int j=0;j<H;j++)
-					for(int clr=0;clr<3;clr++) {
-						out[i][j][clr] = out[i][j][clr].scale(1.0/(W*H));
-					}
-		}
-		return out;
-	}
-	
-	//performs the Fast Fourier Transform
-	//must have the input image be 2^n by 2^m
-	//not terribly efficient - slower than FFT2 as it makes many new arrays
+	/**
+	 * Performs a Discrete Fourier Transform (DFT) on a given input.
+	 * This is optimized with the FFT algorithm, making it the only viable choice for large images.
+	 * Requires W and H to be powers of 2
+	 * @param in a (complex) array on which to perform the DFT.
+	 * @param sizeX the first dimension of the array
+	 * @param sizeY the second dimension of the array
+	 * @param forward whether to do a forward DFT or backwards DFT
+	 * @return a new array that is in's DFT.
+	 */
 	public static Complex[][] FFT1(Complex[][] in, int sizeX, int sizeY, boolean forward) {
 		if(sizeX == 1 && sizeY == 1) {
 			Complex[][] out = new Complex[1][1];
@@ -348,7 +365,20 @@ public class Main {
 			return out;
 		}
 	}
-	// This is a faster implementation of the FFT.
+	/**
+	 * Performs a Discrete Fourier Transform (DFT) on a given input.
+	 * This is further otimized than FFT1, about twice as fast for medium images.
+	 * Requires in to be a W by H array.
+	 * @param in a (complex) array on which to perform the DFT.
+	 * @param startX the first x index to consider
+	 * @param deltaX the y step-size
+	 * @param sizeX the first dimension of the array
+	 * @param startY the first y index to consider
+	 * @param deltaY the x step-size
+	 * @param sizeY the second dimension of the array
+	 * @param forward whether to do a forward DFT or backwards DFT
+	 * @return a new array that is in's DFT.
+	 */
 	//NOTE that this handles any order of dividing coordinates, but it's easiest to divide sizeX to 1 first.
 	public static Complex[][] FFT2(Complex[][] in, int startX, int deltaX, int sizeX, int startY, int deltaY, int sizeY, boolean forward) {
 		Complex[][] out = new Complex[sizeX][sizeY];
@@ -381,12 +411,18 @@ public class Main {
 			return out;
 		}
 	}
-	//same as above, but does this for all colors in a complex-pixelized-img at once*
-	// "forward" denotes whether to do the forward or reverse transforms.
-	// *has now become a compact tool for doing Fourier decomposition of a whole picture.
-	public static Complex[][][] FFTAll(Complex[][][] in, boolean forward) {
+	/**
+	 * Performs a DFT on each color individually of a pixel array.
+	 * May call to SFT, FFT1, or FFT2 with little modification.
+	 * A general all-purpose tool to do obtain the fourier coefficients of a pixel array
+	 * @param in a (complex) array on which to perform the DFT.
+	 * @param forward whether to do a forward DFT or backwards DFT
+	 * @return a (complex) wave array
+	 */
+	public static Complex[][][] FTAll(Complex[][][] in, boolean forward) {
 		Complex[][][] out = new Complex[3][][];
 		for(int clr=0;clr<3;clr++) {
+//			out[clr] = SFT(in[clr], forward);
 //			out[clr] = FFT1(in[clr], W, H, forward);
 			out[clr] = FFT2(in[clr], 0, 1, W, 0, 1, H, forward);
 		}
